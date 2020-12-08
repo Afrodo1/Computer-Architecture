@@ -2,8 +2,18 @@
 
 import sys
 
+# Operation Codes = Op Codes
+HLT = 0b00000001
+PRN = 0b01000111
+LDI = 0b10000010
+PUSH = 0b01000101
+POP = 0b01000110
 
 
+# ALU
+MUL = 0b10100010
+ADD = 0b10100000
+CMP = 0b10100111
 
 
 class CPU:
@@ -23,22 +33,40 @@ class CPU:
 
         self.pc = 0
 
-    def load(self):
-        """Load a program into memory."""
+        self.sp = 7
 
-        address = 0
+        self.fl = 0
+
+        self.dispatchable = {
+            MUL: self.mul,
+            ADD: self.add,
+            PRN: self.prn,
+            LDI: self.ldi,
+        }
+
+
+
+    def load(self,filename):
+        """Load a program into memory."""
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        """Load a program into memory."""
+
+        address = 0
+        program = []
+
+        with open(filename) as f:
+            for line in f:
+                comment_split = line.split("#")
+                maybe_binary_number = comment_split[0]
+
+                try:
+                    x = int(maybe_binary_number, 2)
+                    program.append(x)
+                except:
+                    continue
+        print(program)
 
         for instruction in program:
             self.ram[address] = instruction
@@ -50,7 +78,10 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -85,34 +116,34 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+    
+    def mul(self, reg_a, reg_b):
+        self.alu("MUL", reg_a, reg_b)  
+        self.pc += 3 
+
+    def add(self, reg_a, reg_b):
+        self.alu("ADD", reg_a, reg_b)
+        self.pc += 3
+
+    def prn(self, reg_a, reg_b):
+        print(self.reg[reg_a])
+        self.pc += 2
+
+    def ldi(self, reg_a, reg_b):
+        self.reg[reg_a] = reg_b
+        self.pc += 3
 
     def run(self):
         """Run the CPU."""
-        self.load()
 
         running = True
-        # Operators in machine code
-
-        HLT = 0b000000101
-        LDI = 0b10000010
-        PRN = 0b01000111
 
         while running:
-            print(self.pc)
-            instruction = self.ram[self.pc]
-
-            if instruction == LDI:
-                print("LDI executed")
-                self.reg[self.pc + 1] = self.pc + 2
-                self.pc += 3
-            elif instruction == PRN:
-                print("Print executed")
-                print(self.reg[self.pc + 1])
-                self.pc += 2
-            elif instruction == HLT:
-                print("Halt executed")
+            ir = self.ram_read(self.pc)
+            reg_a = self.ram_read(self.pc + 1)
+            reg_b = self.ram_read(self.pc + 2)          
+            if ir == HLT:
                 running = False
             else:
-                print(f"Instruction Unkown: {instruction}")
-                self.pc += 1
+                self.dispatchable[ir](reg_a, reg_b)
         self.trace()
