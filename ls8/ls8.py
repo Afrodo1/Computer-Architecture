@@ -5,11 +5,14 @@
 import sys
 from cpu import *
 
+print(str(sys.argv))
+
+
 cpu = CPU()
-print(sys.argv[0])
+
 
 try:
-    cpu.load('D:\CSpt12\Computer-Architecture\ls8\examples\print8.ls8')
+    cpu.load(sys.argv[int(input(f'Enter a number 0-{len(sys.argv)-1}:  '))])
     cpu.run()
     
 except IndexError:

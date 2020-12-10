@@ -9,6 +9,12 @@ LDI = 0b10000010
 PUSH = 0b01000101
 POP = 0b01000110
 
+# PC
+CALL = 0b01010000
+RET = 0b00010001
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
 
 # ALU
 MUL = 0b10100010
@@ -33,15 +39,17 @@ class CPU:
 
         self.pc = 0
 
-        self.sp = 7
+        # Set stack-pointer to 7
 
-        self.fl = 0
+        self.sp = 7
 
         self.dispatchable = {
             MUL: self.mul,
             ADD: self.add,
             PRN: self.prn,
             LDI: self.ldi,
+            PUSH: self.push,
+            POP: self.pop,
         }
 
 
@@ -60,7 +68,6 @@ class CPU:
             for line in f:
                 comment_split = line.split("#")
                 maybe_binary_number = comment_split[0]
-
                 try:
                     x = int(maybe_binary_number, 2)
                     program.append(x)
@@ -71,7 +78,6 @@ class CPU:
         for instruction in program:
             self.ram[address] = instruction
             address += 1
-
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -133,8 +139,20 @@ class CPU:
         self.reg[reg_a] = reg_b
         self.pc += 3
 
+    def push(self, reg_a, reg_b):
+        self.sp -= 1
+        self.ram_write(self.sp, self.reg[reg_a])
+        self.pc += 2
+
+    def pop(self, reg_a, reg_b):
+        self.reg[reg_a] = self.ram_read(self.sp)
+        self.sp += 1
+        self.pc += 2
+
+
     def run(self):
         """Run the CPU."""
+        
 
         running = True
 
