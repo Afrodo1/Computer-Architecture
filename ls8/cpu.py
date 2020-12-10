@@ -2,43 +2,106 @@
 
 import sys
 
+# Operation Codes = Op Codes
+HLT = 0b00000001
+PRN = 0b01000111
+LDI = 0b10000010
+PUSH = 0b01000101
+POP = 0b01000110
+
+# PC
+CALL = 0b01010000
+RET = 0b00010001
+JMP = 0b01010100
+JEQ = 0b01010101
+JNE = 0b01010110
+
+# ALU
+MUL = 0b10100010
+ADD = 0b10100000
+CMP = 0b10100111
+
+
 class CPU:
     """Main CPU class."""
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        # Create 256 bytes of RAM
 
-    def load(self):
+        self.ram = [0] * 256
+
+        # Create 8 registers
+
+        self.reg = [0] * 8
+
+        # Set the program counter to 0
+
+        self.pc = 0
+
+        # Set stack-pointer to 7
+
+        self.sp = 7
+
+        self.dispatchable = {
+            MUL: self.mul,
+            ADD: self.add,
+            PRN: self.prn,
+            LDI: self.ldi,
+            PUSH: self.push,
+            POP: self.pop,
+        }
+
+
+
+    def load(self,filename):
         """Load a program into memory."""
-
-        address = 0
 
         # For now, we've just hardcoded a program:
 
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        """Load a program into memory."""
+
+        address = 0
+        program = []
+
+        with open(filename) as f:
+            for line in f:
+                comment_split = line.split("#")
+                maybe_binary_number = comment_split[0]
+                try:
+                    x = int(maybe_binary_number, 2)
+                    program.append(x)
+                except:
+                    continue
+        print(program)
 
         for instruction in program:
             self.ram[address] = instruction
             address += 1
-
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "SUB":
+            self.reg[reg_a] -= self.reg[reg_b]
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
+
+    def ram_read(self, address):
+        """
+        Reads the value at the designated address of RAM
+        """
+        return self.ram[address]
+
+    def ram_write(self, address, value):
+        """
+        Writes a value to RAM at the designate address
+        """
+        self.ram[address] = value
 
     def trace(self):
         """
@@ -59,7 +122,46 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+    
+    def mul(self, reg_a, reg_b):
+        self.alu("MUL", reg_a, reg_b)  
+        self.pc += 3 
+
+    def add(self, reg_a, reg_b):
+        self.alu("ADD", reg_a, reg_b)
+        self.pc += 3
+
+    def prn(self, reg_a, reg_b):
+        print(self.reg[reg_a])
+        self.pc += 2
+
+    def ldi(self, reg_a, reg_b):
+        self.reg[reg_a] = reg_b
+        self.pc += 3
+
+    def push(self, reg_a, reg_b):
+        self.sp -= 1
+        self.ram_write(self.sp, self.reg[reg_a])
+        self.pc += 2
+
+    def pop(self, reg_a, reg_b):
+        self.reg[reg_a] = self.ram_read(self.sp)
+        self.sp += 1
+        self.pc += 2
+
 
     def run(self):
         """Run the CPU."""
-        pass
+        
+
+        running = True
+
+        while running:
+            ir = self.ram_read(self.pc)
+            reg_a = self.ram_read(self.pc + 1)
+            reg_b = self.ram_read(self.pc + 2)          
+            if ir == HLT:
+                running = False
+            else:
+                self.dispatchable[ir](reg_a, reg_b)
+        self.trace()
